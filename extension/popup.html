@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Summrly</title>
+  <meta charset="utf-8">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #4F46E5;
+      --primary-hover: #4338CA;
+      --success: #10B981;
+      --error: #EF4444;
+      --warning: #F59E0B;
+      --text: #111827;
+      --text-light: #6B7280;
+      --bg: #F9FAFB;
+      --card-bg: #FFFFFF;
+      --border: #E5E7EB;
+    }
+    
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      width: 320px;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      padding: 0;
+      margin: 0;
+    }
+    
+    .container {
+      padding: 16px;
+    }
+    
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      background: var(--card-bg);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 600;
+      font-size: 16px;
+      color: var(--text);
+      text-decoration: none;
+    }
+    
+    .logo img {
+      width: 24px;
+      height: 24px;
+    }
+    
+    .main-content {
+      padding: 16px;
+    }
+    
+    .auth-section {
+      margin-bottom: 20px;
+    }
+    
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      background: var(--card-bg);
+      border-radius: 8px;
+      margin-bottom: 16px;
+      border: 1px solid var(--border);
+    }
+    
+    .user-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary), #7C3AED);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+    
+    .user-details {
+      flex: 1;
+      min-width: 0;
+    }
+    
+    .user-name {
+      font-weight: 500;
+      font-size: 14px;
+      margin-bottom: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    .user-email {
+      font-size: 12px;
+      color: var(--text-light);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    .btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      padding: 10px 16px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      margin-bottom: 12px;
+    }
+    
+    .btn-primary {
+      background-color: var(--primary);
+      color: white;
+    }
+    
+    .btn-primary:hover {
+      background-color: var(--primary-hover);
+      transform: translateY(-1px);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    .btn-primary:disabled {
+      background-color: #9CA3AF;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+    
+    .btn-secondary {
+      background-color: white;
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    
+    .btn-secondary:hover {
+      background-color: #F9FAFB;
+      border-color: #D1D5DB;
+    }
+    
+    .btn-icon {
+      width: 16px;
+      height: 16px;
+    }
+    
+    .status-message {
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      margin-bottom: 16px;
+      display: none;
+      animation: fadeIn 0.3s ease;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .status-message.visible {
+      display: block;
+    }
+    
+    .success {
+      background-color: #ECFDF5;
+      color: #065F46;
+      border-left: 3px solid #10B981;
+    }
+    
+    .error {
+      background-color: #FEF2F2;
+      color: #B91C1C;
+      border-left: 3px solid #EF4444;
+    }
+    
+    .info {
+      background-color: #EFF6FF;
+      color: #1E40AF;
+      border-left: 3px solid #3B82F6;
+    }
+    
+    .loading {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top-color: white;
+      animation: spin 1s ease-in-out infinite;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    .hidden {
+      display: none !important;
+    }
+    
+    .divider {
+      height: 1px;
+      background-color: var(--border);
+      margin: 16px 0;
+      position: relative;
+    }
+    
+    .divider-text {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      background-color: var(--bg);
+      padding: 0 10px;
+      font-size: 12px;
+      color: var(--text-light);
+    }
+    
+    .footer {
+      margin-top: 16px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--text-light);
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <a href="#" class="logo">
+      <img src="icon-128.png" alt="Summrly">
+      <span>Summrly</span>
+    </a>
+  </div>
+
+  <div class="container">
+    <div id="authSection" class="auth-section">
+      <div id="userInfo" class="user-info hidden">
+        <div class="user-avatar" id="userAvatar">U</div>
+        <div class="user-details">
+          <div class="user-name" id="userName">Loading...</div>
+          <div class="user-email" id="userEmail">user@example.com</div>
+        </div>
+      </div>
+
+      <button id="loginBtn" class="btn btn-primary">
+        <svg class="btn-icon" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12.545 10.239v3.821h5.445c-0.712 2.315-2.647 3.972-5.445 3.972-3.332 0-6.033-2.701-6.033-6.032s2.701-6.032 6.033-6.032c1.498 0 2.866 0.549 3.921 1.453l2.814-2.814c-1.884-1.661-4.443-2.694-6.735-2.694-5.522 0-10 4.479-10 10s4.478 10 10 10c8.396 0 10-7.194 10-10 0-0.672-0.067-1.422-0.167-2.091h-9.833z"></path>
+        </svg>
+        Sign in with Google
+      </button>
+      
+      <button id="logoutBtn" class="btn btn-secondary hidden">
+        <svg class="btn-icon" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M16 13v-2h-9v-2h9v-2l4 3-4 3zm-13-8h14v14h-14v-14z"></path>
+        </svg>
+        Sign Out
+      </button>
+    </div>
+
+    <div class="divider">
+      <span class="divider-text">or</span>
+    </div>
+
+    <div class="action-section">
+      <button id="summarizeBtn" class="btn btn-primary" disabled>
+        <svg class="btn-icon" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
+        </svg>
+        Summarize Current Page
+      </button>
+      
+      <div id="statusMessage" class="status-message"></div>
+    </div>
+
+    <div class="footer">
+      <p>Summrly v1.0.0</p>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

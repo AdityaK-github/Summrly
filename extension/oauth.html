@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Summrly - OAuth Callback</title>
+  <script>
+    // Extract token from URL hash or query params
+    function extractToken() {
+      const hash = window.location.hash.substring(1);
+      const params = new URLSearchParams(hash);
+      const token = params.get('access_token') || params.get('token');
+      return token || null;
+    }
+
+    // Extract user info from URL
+    function extractUser() {
+      const params = new URLSearchParams(window.location.search);
+      const user = {};
+      
+      if (params.has('user')) {
+        try {
+          return JSON.parse(decodeURIComponent(params.get('user')));
+        } catch (e) {
+          console.error('Failed to parse user data:', e);
+        }
+      }
+      
+      // Fallback to individual params
+      if (params.has('email')) {
+        user.email = params.get('email');
+        user.name = params.get('name') || user.email.split('@')[0];
+        user.picture = params.get('picture');
+      }
+      
+      return Object.keys(user).length > 0 ? user : null;
+    }
+
+    // Send message to background script and close the tab
+    function sendAuthResult(success, token, user) {
+      chrome.runtime.sendMessage({
+        type: 'AUTH_RESULT',
+        success,
+        token,
+        user
+      }, (response) => {
+        console.log('Auth result sent:', response);
+        window.close();
+      });
+    }
+
+    // Handle the OAuth callback
+    function handleCallback() {
+      const token = extractToken();
+      const user = extractUser();
+      
+      if (token) {
+        console.log('OAuth successful, token received');
+        sendAuthResult(true, token, user);
+      } else {
+        console.error('No token found in OAuth callback');
+        sendAuthResult(false, null, null);
+      }
+    }
+
+    // Initialize when the page loads
+    document.addEventListener('DOMContentLoaded', handleCallback);
+  </script>
+</head>
+<body>
+  <div style="text-align: center; margin-top: 50px;">
+    <h2>Completing authentication...</h2>
+    <p>Please wait while we log you in.</p>
+  </div>
+</body>
+</html>
