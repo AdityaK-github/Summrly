@@ -6,9 +6,9 @@ const API_URL = 'http://localhost:5003/api';
 // Async thunks
 export const fetchUserProfile = createAsyncThunk(
   'user/fetchProfile',
-  async (username, { getState }) => {
+  async (userId, { getState }) => {
     const { token } = getState().auth;
-    const response = await axios.get(`${API_URL}/users/${username}`, {
+    const response = await axios.get(`${API_URL}/users/id/${userId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return response.data;
@@ -41,12 +41,27 @@ export const unfollowUser = createAsyncThunk(
   }
 );
 
+export const fetchAllUsers = createAsyncThunk(
+  'user/fetchAll',
+  async ({ page = 1, limit = 20 }, { getState }) => {
+    const { token } = getState().auth;
+    const response = await axios.get(`${API_URL}/users?page=${page}&limit=${limit}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response.data;
+  }
+);
+
 const initialState = {
   profile: null,
+  allUsers: [],
+  totalUsers: 0,
   loading: false,
   error: null,
   following: [],
   followers: [],
+  currentPage: 1,
+  totalPages: 1,
 };
 
 const userSlice = createSlice({
@@ -61,6 +76,22 @@ const userSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
+      // Fetch All Users
+      .addCase(fetchAllUsers.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchAllUsers.fulfilled, (state, action) => {
+        state.loading = false;
+        state.allUsers = action.payload.users;
+        state.totalUsers = action.payload.total;
+        state.currentPage = action.payload.page;
+        state.totalPages = action.payload.pages;
+      })
+      .addCase(fetchAllUsers.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message;
+      })
       // Fetch User Profile
       .addCase(fetchUserProfile.pending, (state) => {
         state.loading = true;

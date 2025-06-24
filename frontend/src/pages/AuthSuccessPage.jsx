@@ -1,69 +1,77 @@
-import React, { useEffect, useContext, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { FaSpinner } from 'react-icons/fa';
-import AuthContext from '../AuthContext';
-import './AuthSuccessPage.css';
+import React, { useEffect, useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { FaSpinner, FaCheck, FaExclamationTriangle } from 'react-icons/fa';
+import { login } from '../store/slices/authSlice';
 
 const AuthSuccessPage = () => {
-  const location = useLocation();
+  const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { login } = useContext(AuthContext);
+  const location = useLocation();
   const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(true);
+  const { isAuthenticated, isLoading } = useSelector((state) => state.auth);
 
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const token = params.get('token');
-    const state = params.get('state');
-    const storedState = localStorage.getItem('oauth_state');
-    
-    // Clear the stored state to prevent replay attacks
-    localStorage.removeItem('oauth_state');
+    const processAuth = async () => {
+      const params = new URLSearchParams(location.search);
+      const token = params.get('token');
+      const state = params.get('state');
+      const storedState = localStorage.getItem('oauth_state');
 
-    const handleAuthError = (errorMessage, errorCode = 'auth_failed') => {
-      console.error(errorMessage);
-      setError(errorMessage);
-      setIsLoading(false);
-      // Redirect to login page with error after a short delay
-      setTimeout(() => {
-        navigate(`/login?error=${errorCode}`);
-      }, 3000);
-    };
+      // Clear the stored state to prevent replay attacks
+      localStorage.removeItem('oauth_state');
 
-    // Validate state parameter to prevent CSRF
-    if (!state || state !== storedState) {
-      return handleAuthError('Invalid authentication state. Please try again.', 'invalid_state');
-    }
-
-    if (!token) {
-      return handleAuthError('Authentication failed. No token received.', 'no_token');
-    }
-
-    // Process the successful authentication
-    const processLogin = async () => {
       try {
-        setIsLoading(true);
-        await login(token);
-        // Redirect to the previous page or home after successful login
-        const from = location.state?.from?.pathname || '/';
-        navigate(from);
+        // Validate state parameter to prevent CSRF
+        if (!state || state !== storedState) {
+          throw new Error('Invalid authentication state');
+        }
+
+        if (!token) {
+          throw new Error('No authentication token received');
+        }
+
+        // Dispatch login action with the token
+        const result = await dispatch(login({ token }));
+        
+        if (result.meta.requestStatus === 'fulfilled') {
+          // Get the redirect path from URL parameters or localStorage
+          const from = location.state?.from?.pathname || '/';
+          
+          // Small delay to show success message
+          setTimeout(() => {
+            navigate(from, { replace: true });
+          }, 1000);
+        } else {
+          throw new Error('Authentication failed');
+        }
       } catch (err) {
-        handleAuthError('Failed to complete login. Please try again.', 'login_failed');
+        console.error('Authentication error:', err);
+        setError(err.message || 'Authentication failed. Please try again.');
+        
+        // Redirect to login page with error after a delay
+        setTimeout(() => {
+          navigate('/login', { 
+            state: { error: error || 'Authentication failed' },
+            replace: true 
+          });
+        }, 3000);
       } finally {
-        setIsLoading(false);
+        setIsProcessing(false);
       }
     };
 
-    processLogin();
-  }, [location, navigate, login]);
+    processAuth();
+  }, [location, dispatch, navigate, error]);
 
-  if (isLoading) {
+  if (isProcessing || isLoading) {
     return (
-      <div className="auth-success-container">
-        <div className="auth-loading">
-          <FaSpinner className="spinner" />
-          <h2>Completing Authentication...</h2>
-          <p>Please wait while we log you in.</p>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center p-8 bg-white rounded-lg shadow-md">
+          <FaSpinner className="animate-spin text-blue-500 text-4xl mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-gray-800">Completing Authentication</h2>
+          <p className="text-gray-600 mt-2">Please wait while we log you in...</p>
         </div>
       </div>
     );
@@ -71,15 +79,27 @@ const AuthSuccessPage = () => {
 
   if (error) {
     return (
-      <div className="auth-error">
-        <h2>Authentication Error</h2>
-        <p>{error}</p>
-        <p>Redirecting to login page...</p>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center p-8 bg-white rounded-lg shadow-md">
+          <FaExclamationTriangle className="text-red-500 text-4xl mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-gray-800">Authentication Error</h2>
+          <p className="text-gray-600 mt-2">{error}</p>
+          <p className="text-sm text-gray-500 mt-4">Redirecting to login page...</p>
+        </div>
       </div>
     );
   }
 
-  return null; // Shouldn't reach here due to redirects
+  // Success state (briefly shown before redirect)
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="text-center p-8 bg-white rounded-lg shadow-md">
+        <FaCheck className="text-green-500 text-4xl mx-auto mb-4" />
+        <h2 className="text-xl font-semibold text-gray-800">Login Successful!</h2>
+        <p className="text-gray-600 mt-2">You are being redirected...</p>
+      </div>
+    </div>
+  );
 };
 
 export default AuthSuccessPage;

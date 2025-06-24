@@ -37,25 +37,27 @@ const LoginPage = () => {
     }
   }, [searchParams]);
 
-  // Check authentication status and handle redirects
+  // Handle successful authentication and redirect
   useEffect(() => {
     if (isAuthenticated) {
-      // Redirect to the page the user was trying to access or home
-      const from = searchParams.get('from') || '/';
-      navigate(from, { replace: true });
+      // Get the redirect path from URL parameters or localStorage
+      const from = searchParams.get('from') || 
+                 localStorage.getItem('pre_auth_path') || 
+                 '/';
+      
+      // Clean up stored path
+      if (localStorage.getItem('pre_auth_path')) {
+        localStorage.removeItem('pre_auth_path');
+      }
+      
+      // Use setTimeout to ensure state updates are processed before navigation
+      const timer = setTimeout(() => {
+        navigate(from, { replace: true });
+      }, 0);
+      
+      return () => clearTimeout(timer);
     }
   }, [isAuthenticated, navigate, searchParams]);
-  
-  // Load user on mount if token exists
-  useEffect(() => {
-    const initializeAuth = async () => {
-      if (localStorage.getItem('summrly_token')) {
-        await dispatch(loadUser());
-      }
-    };
-    
-    initializeAuth();
-  }, [dispatch]);
   
   // Clear any errors when component unmounts
   useEffect(() => {
@@ -106,7 +108,8 @@ const LoginPage = () => {
     
     if (token && state && state === storedState) {
       // Clean up the URL
-      window.history.replaceState({}, document.title, window.location.pathname);
+      const cleanPath = window.location.pathname;
+      window.history.replaceState({}, document.title, cleanPath);
       localStorage.removeItem('oauth_state');
       
       // Process the login
@@ -114,6 +117,12 @@ const LoginPage = () => {
         try {
           setLocalLoading(true);
           const result = await dispatch(login({ token }));
+          
+          // If login is successful, set a flag to indicate successful login
+          if (result.meta.requestStatus === 'fulfilled') {
+            localStorage.setItem('login_success', 'true');
+          }
+          
           if (result.error) {
             console.error('Login error:', result.error);
           }

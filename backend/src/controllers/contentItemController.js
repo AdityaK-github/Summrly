@@ -37,7 +37,7 @@ const createContentItem = asyncHandler(async (req, res) => {
       const extractedText = await extractTextFromUrl(originalUrl);
       if (extractedText && extractedText.trim().length > 0) {
         console.log('Text extracted successfully. Attempting to generate summary...');
-        const intendedLLMModel = 'llama3-70b-8192'; // Align with summarizer.js default
+        const intendedLLMModel = 'llama3-70b-8192'; // Using Llama 3 70B model
         const generatedAISummary = await generateSummary(extractedText); // Summarizer now handles chunking
         if (generatedAISummary && generatedAISummary.trim().length > 0) {
           contentItem.summary = generatedAISummary;
@@ -81,6 +81,43 @@ const createContentItem = asyncHandler(async (req, res) => {
 const getContentItems = asyncHandler(async (req, res) => {
   const contentItems = await ContentItem.find({ userId: req.user._id }).sort({ createdAt: -1 });
   res.status(200).json(contentItems);
+});
+
+// @desc    Get content items by user ID (public items only unless requesting user's own content)
+// @route   GET /api/contentitems/user/:userId
+// @access  Public (for public items), Private (for private user content)
+const getContentItemsByUser = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+  const skip = (page - 1) * limit;
+
+  // Check if the requesting user is the owner
+  const isOwner = req.user && req.user._id.toString() === userId;
+  
+  let query = { userId };
+  
+  // If not the owner, only return public items
+  if (!isOwner) {
+    query.isPublic = true;
+  }
+
+  const [items, total] = await Promise.all([
+    ContentItem.find(query)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .populate('userId', 'username profilePictureUrl'),
+    ContentItem.countDocuments(query)
+  ]);
+
+  res.status(200).json({
+    items,
+    total,
+    page,
+    pages: Math.ceil(total / limit),
+    hasMore: skip + items.length < total
+  });
 });
 
 // @desc    Get a single content item by ID

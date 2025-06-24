@@ -6,20 +6,29 @@
   "permissions": [
     "activeTab",
     "storage",
+    "identity",
+    "cookies",
     "tabs",
     "scripting",
-    "identity"
+    "webNavigation"
   ],
   "host_permissions": [
     "http://localhost:5003/*",
-    "https://accounts.google.com/*"
+    "https://accounts.google.com/*",
+    "<all_urls>"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
   ],
   "action": {
     "default_popup": "popup.html",
     "default_icon": {
       "16": "icon16.png",
-      "48": "icon48.png",
-      "128": "icon128.png"
+      "48": "icon48.png"
     }
   },
   "background": {
@@ -40,6 +49,6 @@
     ]
   },
   "content_security_policy": {
-    "extension_pages": "script-src 'self' 'unsafe-eval'; object-src 'self'"
+    "extension_pages": "script-src 'self'; object-src 'self'"
   }
 }

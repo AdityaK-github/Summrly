@@ -7,6 +7,7 @@ import {
   FaList, 
   FaCompass, 
   FaUser, 
+  FaUsers,
   FaSignOutAlt, 
   FaCog, 
   FaChevronDown,
@@ -21,11 +22,10 @@ const Navbar = () => {
   const location = useLocation();
   const menuRef = useRef(null);
   
-  const { user, isAuthenticated, isLoading } = useSelector((state) => ({
-    user: state.auth.user,
-    isAuthenticated: state.auth.isAuthenticated,
-    isLoading: state.auth.isLoading
-  }));
+  // Use separate selectors for each piece of state to prevent unnecessary re-renders
+  const user = useSelector((state) => state.auth.user);
+  const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
+  const isLoading = useSelector((state) => state.auth.isLoading);
   
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
@@ -126,6 +126,13 @@ const Navbar = () => {
                 </Link>
               </li>
               
+              <li className={`nav-item ${isActive('/users') ? 'active' : ''}`}>
+                <Link to="/users" className="nav-link">
+                  <FaUsers className="nav-icon" />
+                  <span className="nav-text">Users</span>
+                </Link>
+              </li>
+              
               <li className="nav-item user-menu" ref={menuRef}>
                 <button 
                   className={`user-button ${isMenuOpen ? 'active' : ''}`}
@@ -169,6 +176,14 @@ const Navbar = () => {
                     >
                       <FaCog className="dropdown-icon" />
                       <span>Settings</span>
+                    </Link>
+                    <Link 
+                      to="/users" 
+                      className="dropdown-item"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      <FaUsers className="dropdown-icon" />
+                      <span>Users</span>
                     </Link>
                     <div className="dropdown-divider"></div>
                     <button 

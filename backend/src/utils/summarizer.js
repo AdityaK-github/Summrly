@@ -6,9 +6,13 @@ if (!groqApiKey) {
   console.warn('GROQ_API_KEY not found in environment variables. Summarization will not work.');
 }
 
-const groq = process.env.GROQ_API_KEY ? new Groq({ apiKey: process.env.GROQ_API_KEY }) : null;
+const groq = groqApiKey? new Groq({ apiKey: groqApiKey }) : null;
 
 const DEFAULT_MODEL = 'llama3-70b-8192';
+
+// Rate limiting variables
+let lastRequestTime = 0;
+const MIN_REQUEST_INTERVAL = 1000; // 1 second between requests to respect rate limits
 const MAX_CHARS_PER_CHUNK = 20000; // Approx 5000 tokens, leaving room for summary
 const CHUNK_OVERLAP = 1000; // Overlap characters to maintain context
 
@@ -60,6 +64,14 @@ const generateSummary = async (text, model = DEFAULT_MODEL) => {
   if (!groq) {
     throw new Error('Groq SDK not initialized. Check GROQ_API_KEY.');
   }
+  
+  // Implement rate limiting
+  const now = Date.now();
+  const timeSinceLastRequest = now - lastRequestTime;
+  if (timeSinceLastRequest < MIN_REQUEST_INTERVAL) {
+    await new Promise(resolve => setTimeout(resolve, MIN_REQUEST_INTERVAL - timeSinceLastRequest));
+  }
+  lastRequestTime = Date.now();
   if (!text || text.trim() === '') {
     console.log('Input text is empty, returning empty summary.');
     return '';

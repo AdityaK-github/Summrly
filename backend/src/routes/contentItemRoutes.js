@@ -4,6 +4,7 @@ const router = express.Router();
 const {
   createContentItem,
   getContentItems,
+  getContentItemsByUser,
   getContentItemById,
   updateContentItem,
   deleteContentItem,
@@ -19,6 +20,11 @@ router.post('/', protect, createContentItem);
 // @route   GET /api/contentitems
 // @access  Private
 router.get('/', protect, getContentItems);
+
+// @desc    Get content items by user ID (public items only unless requesting user's own content)
+// @route   GET /api/contentitems/user/:userId
+// @access  Public (for public items), Private (for private user content)
+router.get('/user/:userId', protect, getContentItemsByUser);
 
 // @desc    Get a single content item by ID
 // @route   GET /api/contentitems/:id

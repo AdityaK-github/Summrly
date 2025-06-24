@@ -36,7 +36,8 @@ const userSchema = new mongoose.Schema({
   },
   following: [{
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
+    ref: 'User',
+    index: true
   }],
   followersCount: {
     type: Number,
@@ -82,6 +83,31 @@ userSchema.methods.matchPassword = async function (enteredPassword) {
 userSchema.index({ username: 1 });
 userSchema.index({ email: 1 });
 userSchema.index({ name: 1 }); // Add index for name field for search
+
+// Create a compound sparse index to prevent duplicate follows
+userSchema.index(
+  { _id: 1, following: 1 },
+  { unique: true, sparse: true }
+);
+
+// Create a text index for fuzzy search
+userSchema.index(
+  { 
+    username: 'text',
+    email: 'text',
+    name: 'text' 
+  },
+  {
+    weights: {
+      username: 3,    // Highest weight to username
+      name: 2,        // Medium weight to name
+      email: 1        // Lower weight to email
+    },
+    name: 'user_search_index',
+    default_language: 'english',
+    language_override: 'search_language'
+  }
+);
 
 const User = mongoose.model('User', userSchema);
 

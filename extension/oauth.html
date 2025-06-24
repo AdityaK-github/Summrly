@@ -6,69 +6,315 @@
     // Extract token from URL hash or query params
     function extractToken() {
       const hash = window.location.hash.substring(1);
-      const params = new URLSearchParams(hash);
-      const token = params.get('access_token') || params.get('token');
-      return token || null;
+      const search = window.location.search.substring(1);
+      const hashParams = new URLSearchParams(hash);
+      const searchParams = new URLSearchParams(search);
+      
+      console.log('Extracting token from URL:', { hash, search });
+      
+      // Check both hash and query params for token
+      const token = hashParams.get('access_token') || 
+                   hashParams.get('token') ||
+                   searchParams.get('token') ||
+                   searchParams.get('access_token');
+      
+      console.log('Extracted token:', token ? '***' + token.slice(-4) : 'none');
+      return token;
     }
 
-    // Extract user info from URL
+    // Extract user info from URL or local storage
     function extractUser() {
       const params = new URLSearchParams(window.location.search);
       const user = {};
       
+      console.log('Extracting user from URL params:', window.location.search);
+      
+      // Try to get user from URL params
       if (params.has('user')) {
         try {
-          return JSON.parse(decodeURIComponent(params.get('user')));
+          const userData = JSON.parse(decodeURIComponent(params.get('user')));
+          console.log('Found user in URL params:', userData);
+          return userData;
         } catch (e) {
           console.error('Failed to parse user data:', e);
         }
       }
       
       // Fallback to individual params
-      if (params.has('email')) {
-        user.email = params.get('email');
-        user.name = params.get('name') || user.email.split('@')[0];
-        user.picture = params.get('picture');
+      if (params.has('email') || params.has('name')) {
+        const email = params.get('email') || '';
+        user.email = email;
+        user.name = params.get('name') || email.split('@')[0];
+        user.picture = params.get('picture') || '';
+        console.log('Built user from individual params:', user);
+        return user;
       }
       
-      return Object.keys(user).length > 0 ? user : null;
+      // If no user in URL, try to get from session storage
+      const sessionUser = sessionStorage.getItem('summrly_user');
+      if (sessionUser) {
+        try {
+          const parsedUser = JSON.parse(sessionUser);
+          console.log('Found user in session storage:', parsedUser);
+          return parsedUser;
+        } catch (e) {
+          console.error('Failed to parse session user:', e);
+        }
+      }
+      
+      console.log('No user data found');
+      return null;
     }
 
     // Send message to background script and close the tab
     function sendAuthResult(success, token, user) {
+      console.log('Sending auth result to background script:', { 
+        success, 
+        hasToken: !!token,
+        hasUser: !!user,
+        user: user ? { name: user.name, email: user.email } : null
+      });
+      
       chrome.runtime.sendMessage({
         type: 'AUTH_RESULT',
         success,
         token,
         user
       }, (response) => {
-        console.log('Auth result sent:', response);
-        window.close();
+        console.log('Auth result sent, response:', response);
+        // Give it a moment to process before closing
+        setTimeout(() => {
+          console.log('Closing OAuth window');
+          window.close();
+        }, 1000);
+      });
+    }
+
+    // Verify the OAuth state parameter
+    async function verifyState(state) {
+      return new Promise((resolve) => {
+        chrome.storage.local.get(['oauthState'], (result) => {
+          if (chrome.runtime.lastError) {
+            console.error('Error getting OAuth state:', chrome.runtime.lastError);
+            resolve(false);
+            return;
+          }
+          
+          const storedState = result.oauthState;
+          console.log('Verifying OAuth state:', { storedState, receivedState: state });
+          
+          // Check if state exists and is not expired (5 minutes)
+          const isValid = storedState && 
+                         storedState.state === state && 
+                         (Date.now() - storedState.timestamp) < 5 * 60 * 1000;
+          
+          // Clean up the state after verification
+          if (storedState) {
+            chrome.storage.local.remove(['oauthState']);
+          }
+          
+          resolve(isValid);
+        });
       });
     }
 
     // Handle the OAuth callback
-    function handleCallback() {
-      const token = extractToken();
-      const user = extractUser();
+    async function handleCallback() {
+      console.log('Handling OAuth callback...');
       
-      if (token) {
-        console.log('OAuth successful, token received');
-        sendAuthResult(true, token, user);
-      } else {
-        console.error('No token found in OAuth callback');
-        sendAuthResult(false, null, null);
+      try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        
+        // Check for OAuth error first
+        const error = urlParams.get('error') || hashParams.get('error');
+        const state = urlParams.get('state') || hashParams.get('state');
+        const code = urlParams.get('code');
+        
+        console.log('OAuth callback parameters:', { 
+          hasError: !!error,
+          hasState: !!state,
+          hasCode: !!code,
+          url: window.location.href
+        });
+        
+        // Handle OAuth error if present
+        if (error) {
+          const errorDesc = urlParams.get('error_description') || hashParams.get('error_description') || error;
+          console.error('OAuth error:', { error, description: errorDesc });
+          sendAuthResult(false, null, { 
+            error: 'Authentication failed',
+            details: errorDesc
+          });
+          return;
+        }
+        
+        // Verify state parameter
+        if (!state) {
+          const errorMsg = 'No state parameter found in OAuth callback';
+          console.error(errorMsg);
+          sendAuthResult(false, null, { error: errorMsg });
+          return;
+        }
+        
+        // Verify the state parameter matches what we stored
+        const isStateValid = await verifyState(state);
+        if (!isStateValid) {
+          const errorMsg = 'Invalid or expired state parameter';
+          console.error(errorMsg, { receivedState: state });
+          sendAuthResult(false, null, { error: errorMsg });
+          return;
+        }
+        
+        // Extract token from URL
+        const token = extractToken();
+        let user = extractUser();
+        
+        console.log('OAuth callback - Token found:', !!token, 'User found:', !!user);
+        
+        // If we have a code but no token, we might need to exchange it
+        if (code && !token) {
+          console.log('Exchanging authorization code for token...');
+          try {
+            const response = await fetch('http://localhost:5003/api/users/token', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+              },
+              body: JSON.stringify({
+                code,
+                redirect_uri: chrome.identity.getRedirectURL('oauth.html'),
+                grant_type: 'authorization_code'
+              })
+            });
+            
+            if (response.ok) {
+              const tokenData = await response.json();
+              console.log('Successfully exchanged code for token');
+              
+              if (tokenData.access_token) {
+                // Update the token and proceed with user info fetch
+                window.location.hash = `#access_token=${tokenData.access_token}`;
+                if (tokenData.expires_in) {
+                  console.log(`Token expires in ${tokenData.expires_in} seconds`);
+                }
+                // Reload to process the token from the hash
+                window.location.reload();
+                return;
+              }
+            } else {
+              console.error('Failed to exchange code for token:', await response.text());
+            }
+          } catch (err) {
+            console.error('Error exchanging code for token:', err);
+          }
+        }
+        
+        // If we have a token but no user info, fetch it
+        if (token && (!user || !user.id)) {
+          console.log('Fetching user profile from backend...');
+          try {
+            const response = await fetch('http://localhost:5003/api/users/me', {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+              }
+            });
+            
+            if (response.ok) {
+              const userData = await response.json();
+              console.log('Fetched user profile:', userData);
+              user = userData.user || userData;
+            } else {
+              const errorText = await response.text();
+              console.error('Failed to fetch user profile:', errorText);
+              throw new Error('Failed to fetch user profile: ' + errorText);
+            }
+          } catch (err) {
+            console.error('Error fetching user profile:', err);
+            // Continue with the token even if we couldn't fetch the profile
+          }
+        }
+        
+        if (token) {
+          console.log('Authentication successful, sending result to background script');
+          sendAuthResult(true, token, user);
+        } else {
+          const errorMsg = 'No authentication token found in the response';
+          console.error(errorMsg);
+          sendAuthResult(false, null, { error: errorMsg });
+        }
+      } catch (error) {
+        console.error('Error in OAuth callback handler:', error);
+        sendAuthResult(false, null, { 
+          error: 'Authentication error',
+          details: error.message 
+        });
       }
     }
 
     // Initialize when the page loads
     document.addEventListener('DOMContentLoaded', handleCallback);
   </script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      max-width: 400px;
+      margin: 0 auto;
+      padding: 20px;
+      text-align: center;
+      background-color: #f8f9fa;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    .spinner {
+      width: 40px;
+      height: 40px;
+      margin: 0 auto 20px;
+      border: 4px solid rgba(0, 0, 0, 0.1);
+      border-radius: 50%;
+      border-top-color: #4F46E5;
+      animation: spin 1s ease-in-out infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    h2 {
+      color: #1f2937;
+      margin-bottom: 10px;
+    }
+    p {
+      color: #6b7280;
+      margin-top: 0;
+    }
+    .error {
+      color: #dc2626;
+      background-color: #fef2f2;
+      padding: 10px;
+      border-radius: 6px;
+      margin-top: 20px;
+      font-size: 14px;
+    }
+  </style>
 </head>
 <body>
-  <div style="text-align: center; margin-top: 50px;">
-    <h2>Completing authentication...</h2>
-    <p>Please wait while we log you in.</p>
-  </div>
+  <div class="spinner"></div>
+  <h2>Completing sign in...</h2>
+  <p>Please wait while we sign you in to Summrly.</p>
+  <div id="errorMessage" class="error" style="display: none;"></div>
+  
+  <script>
+    // Show error message if needed
+    const params = new URLSearchParams(window.location.search);
+    const error = params.get('error');
+    if (error) {
+      document.getElementById('errorMessage').textContent = error;
+      document.getElementById('errorMessage').style.display = 'block';
+    }
+  </script>
 </body>
 </html>

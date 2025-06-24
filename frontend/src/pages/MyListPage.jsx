@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { fetchUserContent } from '../store/slices/contentSlice';
-import { FaSpinner, FaExclamationCircle, FaBook, FaVideo, FaLink } from 'react-icons/fa';
+import { FaSpinner, FaExclamationCircle, FaBook, FaVideo, FaLink, FaExternalLinkAlt } from 'react-icons/fa';
 import './MyListPage.css';
 
 const MyListPage = () => {
@@ -24,9 +24,20 @@ const MyListPage = () => {
           {isArticle ? <FaBook /> : <FaVideo />}
         </div>
         <div className="content-details">
-          <h3>{item.title}</h3>
+          <h3>
+            <a href={`/content/${item._id}`} className="content-title-link">
+              {item.title}
+            </a>
+          </h3>
           <p className="content-summary">
-            {item.summary || 'No summary available'}
+            {item.summary ? (
+              <a href={`/content/${item._id}`} className="content-summary-link">
+                {item.summary.length > 150 ? `${item.summary.substring(0, 150)}...` : item.summary}
+                {item.summary.length > 150 && <span className="read-more">Read more</span>}
+              </a>
+            ) : (
+              'No summary available'
+            )}
           </p>
           <div className="content-meta">
             <span className="content-type">{item.type}</span>

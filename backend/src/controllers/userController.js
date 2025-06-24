@@ -85,6 +85,102 @@ const loginUser = asyncHandler(async (req, res) => {
 // @desc    Get user profile
 // @route   GET /api/users/profile
 // @access  Private
+// @desc    Get all users (paginated)
+// @route   GET /api/users
+// @access  Private
+const getAllUsers = asyncHandler(async (req, res) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 20;
+  const skip = (page - 1) * limit;
+
+  const users = await User.find({ _id: { $ne: req.user._id } })
+    .select('-passwordHash -__v')
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit);
+
+  const total = await User.countDocuments({ _id: { $ne: req.user._id } });
+
+  res.json({
+    users,
+    page,
+    pages: Math.ceil(total / limit),
+    total,
+  });
+});
+
+// @desc    Search users by username or email
+// @route   GET /api/users/search
+// @access  Private
+const searchUsers = asyncHandler(async (req, res) => {
+  const { query } = req.query;
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+  const skip = (page - 1) * limit;
+
+  if (!query || typeof query !== 'string' || query.trim() === '') {
+    res.status(400);
+    throw new Error('Please provide a valid search query');
+  }
+
+  // Split the search query into individual terms
+  const searchTerms = query.trim().split(/\s+/).filter(term => term.length > 0);
+  
+  // Create a search string with each term wrapped in quotes for exact matching
+  // and add fuzzy search with ~ to each term
+  const searchString = searchTerms
+    .map(term => `"${term}" ${term}~`)
+    .join(' ');
+
+  // First, try text search with the full query for best matches
+  const searchQuery = {
+    $and: [
+      { _id: { $ne: req.user._id } },
+      { $text: { $search: searchString } }
+    ]
+  };
+
+  // If no results from text search, fall back to regex search
+  let users = await User.find(searchQuery)
+    .select('-passwordHash -__v')
+    .sort({ score: { $meta: 'textScore' } })
+    .skip(skip)
+    .limit(limit);
+
+  let total = await User.countDocuments(searchQuery);
+
+  // Fallback to regex search if no results from text search
+  if (users.length === 0) {
+    const searchRegex = new RegExp(searchTerms.join('|'), 'i');
+    const regexQuery = {
+      _id: { $ne: req.user._id },
+      $or: [
+        { username: { $regex: searchRegex } },
+        { email: { $regex: searchRegex } },
+        { name: { $regex: searchRegex } }
+      ]
+    };
+
+    users = await User.find(regexQuery)
+      .select('-passwordHash -__v')
+      .sort({ username: 1 })
+      .skip(skip)
+      .limit(limit);
+
+    total = await User.countDocuments(regexQuery);
+  }
+
+  res.json({
+    users,
+    page,
+    pages: Math.ceil(total / limit),
+    total,
+  });
+});
+
+// @desc    Get user profile
+// @route   GET /api/users/profile
+// @access  Private
 const getUserProfile = asyncHandler(async (req, res) => {
   // req.user is set by the protect middleware
   if (req.user) {
@@ -105,4 +201,10 @@ const getUserProfile = asyncHandler(async (req, res) => {
   }
 });
 
-module.exports = { registerUser, loginUser, getUserProfile };
+module.exports = { 
+  registerUser, 
+  loginUser, 
+  getUserProfile, 
+  getAllUsers,
+  searchUsers,
+};

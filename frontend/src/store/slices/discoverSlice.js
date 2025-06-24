@@ -1,7 +1,11 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 
-const API_URL = 'http://localhost:5003/api';
+// Base URL for API requests - using Vite's proxy in development
+const API_URL = '/api';
+
+// Log environment for debugging
+console.log('Environment:', import.meta.env.MODE);
 
 // Async thunks
 export const fetchDiscoverContent = createAsyncThunk(
@@ -16,7 +20,12 @@ export const fetchDiscoverContent = createAsyncThunk(
         },
       }
     );
-    return response.data;
+    return {
+      items: response.data.items,
+      page: response.data.page,
+      pages: response.data.pages,
+      total: response.data.total
+    };
   }
 );
 
@@ -48,6 +57,7 @@ const initialState = {
   currentContentPage: 1,
   currentUserPage: 1,
   searchQuery: '',
+  userSearchPerformed: false,
 };
 
 const discoverSlice = createSlice({
@@ -64,9 +74,18 @@ const discoverSlice = createSlice({
       state.currentContentPage = 1;
       state.currentUserPage = 1;
       state.searchQuery = '';
+      state.userSearchPerformed = false;
     },
     setSearchQuery: (state, action) => {
       state.searchQuery = action.payload;
+    },
+    clearUserSearch: (state) => {
+      state.users = [];
+      state.userSearchLoading = false;
+      state.hasMoreUsers = true;
+      state.currentUserPage = 1;
+      state.userSearchPerformed = false;
+      state.searchQuery = '';
     },
   },
   extraReducers: (builder) => {
@@ -96,11 +115,14 @@ const discoverSlice = createSlice({
         state.contentLoading = false;
         state.error = action.error.message || 'Failed to fetch content';
       })
-      
-      // Search Users
-      .addCase(searchUsers.pending, (state) => {
+      .addCase(searchUsers.pending, (state, { meta }) => {
         state.userSearchLoading = true;
         state.error = null;
+        state.userSearchPerformed = true;
+        // If it's a new search (page 1), clear existing users
+        if (meta.arg.page === 1) {
+          state.users = [];
+        }
       })
       .addCase(searchUsers.fulfilled, (state, action) => {
         state.userSearchLoading = false;
@@ -117,13 +139,15 @@ const discoverSlice = createSlice({
         
         state.hasMoreUsers = pages > page;
         state.currentUserPage = page;
+        state.userSearchPerformed = true;
       })
       .addCase(searchUsers.rejected, (state, action) => {
         state.userSearchLoading = false;
         state.error = action.error.message || 'Failed to search users';
+        state.userSearchPerformed = true;
       });
   },
 });
 
-export const { clearDiscoverState, setSearchQuery } = discoverSlice.actions;
+export const { clearDiscoverState, setSearchQuery, clearUserSearch } = discoverSlice.actions;
 export default discoverSlice.reducer;

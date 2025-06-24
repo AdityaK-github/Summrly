@@ -254,49 +254,71 @@
 </head>
 <body>
   <div class="header">
-    <a href="#" class="logo">
+    <div class="logo">
       <img src="icon-128.png" alt="Summrly">
       <span>Summrly</span>
-    </a>
+    </div>
   </div>
 
   <div class="container">
-    <div id="authSection" class="auth-section">
-      <div id="userInfo" class="user-info hidden">
-        <div class="user-avatar" id="userAvatar">U</div>
+    <!-- Loading State -->
+    <div id="loadingState" class="loading-state">
+      <div class="spinner"></div>
+      <p>Loading...</p>
+    </div>
+
+    <!-- Unauthenticated State -->
+    <div id="unauthenticatedState" class="auth-state" style="display: none;">
+      <div class="card auth-card">
+        <h2>Welcome to Summrly</h2>
+        <p>Sign in to start summarizing and saving your favorite content.</p>
+        <button id="loginBtn" class="btn btn-primary login-btn">
+          <span class="btn-icon">🔑</span> Sign in with Google
+        </button>
+      </div>
+    </div>
+
+    <!-- Authenticated State -->
+    <div id="authenticatedState" class="auth-state" style="display: none;">
+      <!-- User Info -->
+      <div class="user-info">
+        <img id="userAvatar" src="" alt="User" class="user-avatar">
         <div class="user-details">
-          <div class="user-name" id="userName">Loading...</div>
-          <div class="user-email" id="userEmail">user@example.com</div>
+          <div id="userName" class="user-name">User</div>
+          <div id="userEmail" class="user-email">user@example.com</div>
         </div>
       </div>
 
-      <button id="loginBtn" class="btn btn-primary">
-        <svg class="btn-icon" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M12.545 10.239v3.821h5.445c-0.712 2.315-2.647 3.972-5.445 3.972-3.332 0-6.033-2.701-6.033-6.032s2.701-6.032 6.033-6.032c1.498 0 2.866 0.549 3.921 1.453l2.814-2.814c-1.884-1.661-4.443-2.694-6.735-2.694-5.522 0-10 4.479-10 10s4.478 10 10 10c8.396 0 10-7.194 10-10 0-0.672-0.067-1.422-0.167-2.091h-9.833z"></path>
-        </svg>
-        Sign in with Google
-      </button>
-      
-      <button id="logoutBtn" class="btn btn-secondary hidden">
-        <svg class="btn-icon" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M16 13v-2h-9v-2h9v-2l4 3-4 3zm-13-8h14v14h-14v-14z"></path>
-        </svg>
-        Sign Out
-      </button>
+      <!-- Current Page Info -->
+      <div id="currentUrlInfo" class="current-page-info" style="display: none; margin-bottom: 16px; padding: 12px; background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border);">
+        <div style="font-size: 12px; color: var(--text-light); margin-bottom: 8px;">Current Page</div>
+        <div id="currentUrlTitle" style="font-weight: 500; margin-bottom: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"></div>
+        <a id="currentUrlLink" href="#" target="_blank" style="font-size: 12px; color: var(--primary); text-decoration: none; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"></a>
+        <button id="addToSummariesBtn" class="btn btn-primary" style="margin-top: 12px; width: 100%;">
+          <span class="btn-icon">➕</span> Add to My Summaries
+        </button>
+      </div>
+
+      <!-- Main Actions -->
+      <div class="action-buttons">
+        <button id="summarizeBtn" class="btn btn-primary action-btn">
+          <span class="btn-icon">📝</span> Summarize Current Page
+        </button>
+        <button id="viewSavedBtn" class="btn btn-outline action-btn">
+          <span class="btn-icon">📚</span> View Saved Summaries
+        </button>
+      </div>
+
+      <!-- Logout -->
+      <div class="logout-section">
+        <button id="logoutBtn" class="btn btn-text">
+          <span class="btn-icon">🚪</span> Sign out
+        </button>
+      </div>
     </div>
 
-    <div class="divider">
-      <span class="divider-text">or</span>
-    </div>
-
-    <div class="action-section">
-      <button id="summarizeBtn" class="btn btn-primary" disabled>
-        <svg class="btn-icon" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
-        </svg>
-        Summarize Current Page
-      </button>
-      
+    <!-- Status Message -->
+    <div id="statusMessage" class="status-message" style="display: none;"></div>
       <div id="statusMessage" class="status-message"></div>
     </div>
 

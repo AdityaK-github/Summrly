@@ -49,12 +49,14 @@ app.get('/', (req, res) => {
 // Define Routes
 const userRoutes = require('./routes/userRoutes');
 const contentItemRoutes = require('./routes/contentItemRoutes');
+const discoverRoutes = require('./routes/discoverRoutes');
 const userDiscoveryRoutes = require('./routes/userDiscoveryRoutes');
 const feedRoutes = require('./routes/feedRoutes');
 const { notFound, errorHandler } = require('./middleware/errorMiddleware');
 
 app.use('/api/users', userRoutes);
 app.use('/api/contentitems', contentItemRoutes);
+app.use('/api/content/discover', discoverRoutes);
 app.use('/api/discover', userDiscoveryRoutes);
 app.use('/api/feed', feedRoutes);
 
