@@ -42,7 +42,7 @@ const formatDate = (dateString) => {
   }
 };
 
-const ContentItem = ({ item, isOwner = false }) => {
+const ContentItem = ({ item }) => {
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(item.likes || 0);
@@ -138,7 +138,7 @@ const ProfilePage = () => {
   );
   
   const [activeTab, setActiveTab] = useState('summaries');
-  const isOwner = currentUser?._id === userId;
+  const isOwner = currentUser && currentUser._id === profile?._id;
 
   // Fetch profile data
   useEffect(() => {
@@ -366,7 +366,6 @@ const ProfilePage = () => {
                     <ContentItem 
                       key={item._id} 
                       item={item} 
-                      isOwner={isOwner} 
                     />
                   ))}
                 </div>

@@ -1,47 +1,37 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import axios from 'axios';
-
-// Base URL for API requests - using Vite's proxy in development
-const API_URL = '/api';
-
-// Log environment for debugging
-console.log('Environment:', import.meta.env.MODE);
+import api from '../../utils/api';
 
 // Async thunks
 export const fetchDiscoverContent = createAsyncThunk(
   'discover/fetchContent',
-  async ({ page = 1, limit = 10, type = '' }, { getState }) => {
-    const { token } = getState().auth;
-    const response = await axios.get(
-      `${API_URL}/content/discover?page=${page}&limit=${limit}${type ? `&type=${type}` : ''}`,
-      {
-        headers: {
-          Authorization: token ? `Bearer ${token}` : undefined,
-        },
-      }
-    );
-    return {
-      items: response.data.items,
-      page: response.data.page,
-      pages: response.data.pages,
-      total: response.data.total
-    };
+  async ({ page = 1, limit = 10, type = '' }, { rejectWithValue }) => {
+    try {
+      const response = await api.get(
+        `/content/discover?page=${page}&limit=${limit}${type ? `&type=${type}` : ''}`
+      );
+      return {
+        items: response.data.items,
+        page: response.data.page,
+        pages: response.data.pages,
+        total: response.data.total
+      };
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch discover content');
+    }
   }
 );
 
 export const searchUsers = createAsyncThunk(
   'discover/searchUsers',
-  async ({ query, page = 1, limit = 10 }, { getState }) => {
-    const { token } = getState().auth;
-    const response = await axios.get(
-      `${API_URL}/users/search?query=${encodeURIComponent(query)}&page=${page}&limit=${limit}`,
-      {
-        headers: {
-          Authorization: token ? `Bearer ${token}` : undefined,
-        },
-      }
-    );
-    return response.data;
+  async ({ query, page = 1, limit = 10 }, { rejectWithValue }) => {
+    try {
+      const response = await api.get(
+        `/users/search?query=${encodeURIComponent(query)}&page=${page}&limit=${limit}`
+      );
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to search users');
+    }
   }
 );
 

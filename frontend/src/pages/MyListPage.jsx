@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { fetchUserContent } from '../store/slices/contentSlice';
 import { FaSpinner, FaExclamationCircle, FaBook, FaVideo, FaLink, FaExternalLinkAlt } from 'react-icons/fa';
@@ -9,11 +9,15 @@ const MyListPage = () => {
   const { user } = useSelector((state) => state.auth);
   const { userContent, loading, error } = useSelector((state) => state.content);
 
-  useEffect(() => {
+  const fetchContent = useCallback(() => {
     if (user) {
-      dispatch(fetchUserContent());
+      dispatch(fetchUserContent({ userId: user._id }));
     }
   }, [dispatch, user]);
+
+  useEffect(() => {
+    fetchContent();
+  }, [fetchContent]);
 
   const renderContentItem = (item) => {
     const isArticle = item.type === 'article';

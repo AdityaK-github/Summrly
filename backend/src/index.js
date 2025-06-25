@@ -65,7 +65,7 @@ app.use('/api/feed', feedRoutes);
 app.use(notFound);
 app.use(errorHandler);
 
-const PORT = process.env.PORT || 5001; // Fallback port if not defined in .env
+const PORT = process.env.PORT || 5003; // Fallback port if not defined in .env
 
 const server = app.listen(
   PORT,

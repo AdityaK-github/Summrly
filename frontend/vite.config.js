@@ -2,7 +2,7 @@ import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 
 // https://vite.dev/config/
-export default defineConfig(({ command, mode }) => {
+export default defineConfig(({ mode }) => {
   // Load env file based on `mode` in the current working directory.
   // Set the third parameter to '' to load all env regardless of the `VITE_` prefix.
   const env = loadEnv(mode, process.cwd(), '');
@@ -13,13 +13,14 @@ export default defineConfig(({ command, mode }) => {
     server: {
       port: 5173,
       open: true,
-      proxy: {
-        '/api': {
-          target: env.VITE_API_URL || 'http://localhost:5003',
-          changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/api/, '')
-        }
-      }
+      // Removed proxy since we're directly connecting to backend
+      // proxy: {
+      //   '/api': {
+      //     target: 'http://localhost:5003',
+      //     changeOrigin: true,
+      //     secure: false
+      //   }
+      // }
     },
     // Environment variables configuration
     define: {

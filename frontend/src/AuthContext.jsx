@@ -11,7 +11,7 @@ export const AuthProvider = ({ children }) => {
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
-  const API_BASE_URL = 'http://localhost:5003/api';
+  const API_BASE_URL = import.meta.env.MODE === 'development' ? 'http://localhost:5003/api' : (import.meta.env.VITE_API_URL || 'http://localhost:5003/api');
 
   // Set token in both state and local storage
   const setToken = useCallback((newToken) => {
@@ -110,7 +110,7 @@ export const AuthProvider = ({ children }) => {
     
     // Navigate to login page
     navigate('/login');
-  }, [navigate, setToken]);
+  }, [API_BASE_URL, navigate, setToken]);
 
   // Create an axios instance with auth headers
   const authAxios = useCallback((options = {}) => {

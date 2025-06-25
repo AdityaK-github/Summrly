@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { 
@@ -204,13 +204,6 @@ const DiscoverPage = () => {
     </div>
   );
   
-  // Add CSS for spinner animation
-  const spinnerStyle = `
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-  `;
 
   // Render error state
   const renderError = (errorMessage = error) => (
@@ -244,7 +237,7 @@ const DiscoverPage = () => {
 
     return (
       <div key={user._id} className="user-card">
-        <Link to={`/user/${user.username}`} className="user-link">
+        <Link to={`/profile/${user.username}`} className="user-link">
           <div className="user-avatar">
             {user.profilePictureUrl ? (
               <img 
@@ -349,7 +342,7 @@ const DiscoverPage = () => {
             </span>
           </div>
           <Link 
-            to={`/user/${item.user?.username || 'unknown'}`}
+            to={`/profile/${item.user?.username || 'unknown'}`}
             className="content-user hover:text-blue-600 transition-colors"
             onClick={handleLinkClick}
             aria-label={`View ${item.user?.username || 'user'}'s profile`}

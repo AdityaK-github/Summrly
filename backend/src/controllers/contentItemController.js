@@ -205,6 +205,7 @@ const deleteContentItem = asyncHandler(async (req, res) => {
 module.exports = {
   createContentItem,
   getContentItems,
+  getContentItemsByUser,
   getContentItemById,
   updateContentItem,
   deleteContentItem,

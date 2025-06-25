@@ -10,7 +10,7 @@ const AuthSuccessPage = () => {
   const location = useLocation();
   const [error, setError] = useState('');
   const [isProcessing, setIsProcessing] = useState(true);
-  const { isAuthenticated, isLoading } = useSelector((state) => state.auth);
+  const { isLoading } = useSelector((state) => state.auth);
 
   useEffect(() => {
     const processAuth = async () => {

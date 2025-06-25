@@ -165,6 +165,53 @@ router.delete('/:userId/follow', protect, asyncHandler(async (req, res) => {
 // @access  Private
 router.get('/profile', protect, getUserProfile);
 
+// @desc    Get current user (alias for profile)
+// @route   GET /api/users/me
+// @access  Private
+router.get('/me', protect, getUserProfile);
+
+// @desc    Get user by ID
+// @route   GET /api/users/id/:userId
+// @access  Private
+router.get('/id/:userId', protect, asyncHandler(async (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    // Validate user ID format
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ message: 'Invalid user ID format' });
+    }
+    
+    const user = await User.findById(userId)
+      .select('-passwordHash')
+      .populate('following', 'username name profilePictureUrl')
+      .populate('followers', 'username name profilePictureUrl');
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    // Check if current user is following this user
+    const currentUser = await User.findById(req.user._id);
+    const isFollowing = currentUser.following.includes(userId);
+    
+    res.json({
+      user: {
+        ...user.toObject(),
+        isFollowing
+      },
+      following: user.following,
+      followers: user.followers
+    });
+  } catch (error) {
+    console.error('Get user by ID error:', error);
+    res.status(500).json({ 
+      message: 'Error fetching user',
+      error: error.message 
+    });
+  }
+}));
+
 // --- Google OAuth Routes ---
 
 // @desc    Authenticate with Google (redirects to Google)

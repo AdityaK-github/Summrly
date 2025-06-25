@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { 
@@ -16,7 +16,8 @@ import {
   FaExclamationTriangle,
   FaNewspaper,
   FaCompass,
-  FaPlus
+  FaPlus,
+  FaUsers
 } from 'react-icons/fa';
 import { loginSuccess, loadUser } from '../store/slices/authSlice';
 import { 
@@ -47,7 +48,7 @@ const formatDate = (dateString) => {
   }
 };
 
-const FeedItem = ({ item, onAction, showUserInfo = true }) => {
+const FeedItem = ({ item, showUserInfo = true }) => {
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
   
@@ -136,8 +137,6 @@ const FeedItem = ({ item, onAction, showUserInfo = true }) => {
 
   // User info is now handled at the component level with fallbacks
   
-  // Format the post time
-  const postTime = formatDate(safeItem.createdAt);
   
   return (
     <div className="feed-item" onClick={navigateToContent}>
@@ -322,66 +321,80 @@ const HomePage = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [feed, setFeed] = useState([]);
   const [error, setError] = useState(null);
-  const { loading } = useSelector((state) => state.content);
-  const currentUser = useSelector((state) => state.auth.user);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+  const isMounted = useRef(true);
+  
+  const currentUser = useSelector((state) => state.auth.user);
+  const { loading } = useSelector((state) => state.content);
+
+  // Render feed items with React.memo to prevent unnecessary re-renders
+  const MemoizedFeedItem = React.memo(FeedItem, (prevProps, nextProps) => {
+    // Only re-render if these specific props change
+    return (
+      prevProps.item._id === nextProps.item._id &&
+      prevProps.item.likesCount === nextProps.item.likesCount &&
+      prevProps.item.isBookmarked === nextProps.item.isBookmarked
+    );
+  });
+
+  // Clear feed on unmount to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      setFeed([]);
+      setPage(1);
+      setHasMore(true);
+    };
+  }, []);
 
   // Handle OAuth redirect
   useEffect(() => {
+    const handleOAuthToken = async (token) => {
+      setIsProcessing(true);
+      localStorage.setItem('summrly_token', token);
+      
+      try {
+        await dispatch(loginSuccess({ user: null, token }));
+        await dispatch(loadUser()).unwrap();
+        
+        // Clean up URL after successful login
+        const cleanUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl);
+      } catch (error) {
+        console.error('Failed to load user:', error);
+        localStorage.removeItem('summrly_token');
+        navigate('/login');
+      } finally {
+        setIsProcessing(false);
+      }
+    };
+    
     const token = searchParams.get('token');
     if (token && !isAuthenticated && !isProcessing) {
       handleOAuthToken(token);
     }
-  }, [searchParams, isAuthenticated, isProcessing]);
+  }, [searchParams, isAuthenticated, isProcessing, dispatch, navigate]);
   
-  const handleOAuthToken = async (token) => {
-    setIsProcessing(true);
-    localStorage.setItem('summrly_token', token);
-    
-    try {
-      await dispatch(loginSuccess({ user: null, token }));
-      await dispatch(loadUser()).unwrap();
-      
-      // Clean up URL after successful login
-      const cleanUrl = window.location.pathname;
-      window.history.replaceState({}, document.title, cleanUrl);
-    } catch (error) {
-      console.error('Failed to load user:', error);
-      localStorage.removeItem('summrly_token');
-      navigate('/login');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-  
-  // Load feed when authenticated
+  // Load feed data
   const loadFeed = useCallback(async (pageNum = 1, isRefresh = false) => {
-    // Prevent multiple simultaneous requests
-    if (isProcessing) return;
+    if (isLoading || !isMounted.current) return;
+    if (!isRefresh && !hasMore) return;
+    
+    setIsLoading(true);
     
     try {
-      setIsProcessing(true);
-      if (isRefresh) {
-        setIsRefreshing(true);
-      }
-      
-      // Fetch feed data from the API
       const result = await dispatch(fetchFeed({ page: pageNum })).unwrap();
-      
-      // The API returns { items: [...] }, so we need to extract the items array
       const feedItems = Array.isArray(result) ? result : (result?.items || []);
       
       if (!Array.isArray(feedItems)) {
-        console.error('Unexpected feed data format:', result);
         throw new Error('Invalid feed data format');
       }
       
-      // Process feed items to ensure they have all required fields
       const processedItems = feedItems.map(item => ({
         ...item,
         _id: item._id || Math.random().toString(36).substr(2, 9),
@@ -391,48 +404,47 @@ const HomePage = () => {
         type: item.type || 'article',
         likes: Array.isArray(item.likes) ? item.likes : [],
         likesCount: typeof item.likesCount === 'number' ? item.likesCount : (item.likes?.length || 0),
-        commentsCount: typeof item.commentsCount === 'number' ? item.commentsCount : 0,
         isOwned: currentUser && item.userId && (currentUser._id === (item.userId._id || item.userId)),
-        createdAt: item.createdAt || new Date().toISOString(),
-        updatedAt: item.updatedAt || new Date().toISOString()
+        createdAt: item.createdAt || new Date().toISOString()
       }));
+      
+      if (!isMounted.current) return;
       
       // Group items by user and take only the latest from each user
       const latestPosts = getLatestPostsByUser(processedItems);
       
-      // Update feed state based on whether we're loading more or refreshing
       setFeed(prevFeed => {
         if (isRefresh || pageNum === 1) {
           return latestPosts;
         }
-        // Merge with existing feed, avoiding duplicates
-        const existingIds = new Set(prevFeed.map(post => post._id));
-        const newPosts = latestPosts.filter(post => !existingIds.has(post._id));
-        return [...prevFeed, ...newPosts];
+        return [...prevFeed, ...latestPosts];
       });
       
-      // Update pagination state
       setHasMore(feedItems.length > 0);
       setPage(pageNum);
-      setError(null);
+      
     } catch (err) {
       console.error('Failed to load feed:', err);
       setError('Failed to load feed. Please try again later.');
-      if (isRefresh) {
-        setFeed([]); // Reset feed only on refresh error
-      }
     } finally {
-      setIsProcessing(false);
-      setIsRefreshing(false);
+      if (isMounted.current) {
+        setIsLoading(false);
+      }
     }
-  }, [dispatch, currentUser, isAuthenticated]);  // Removed isProcessing from deps to prevent infinite loop
+  }, [dispatch]);
 
   // Initial load
   useEffect(() => {
+    isMounted.current = true;
+    
     if (isAuthenticated && currentUser?._id) {
-      loadFeed();
+      loadFeed(1, true);
     }
-  }, [isAuthenticated, currentUser?._id, loadFeed]);
+    
+    return () => {
+      isMounted.current = false;
+    };
+  }, [isAuthenticated, currentUser?._id]);
   
   // Handle pull to refresh
   const handleRefresh = () => {
@@ -442,25 +454,40 @@ const HomePage = () => {
     }
   };
   
-  // Handle infinite scroll
-  const handleScroll = useCallback(() => {
-    if (
-      window.innerHeight + document.documentElement.scrollTop !== 
-      document.documentElement.offsetHeight || 
-      loading || 
-      !hasMore
-    ) {
-      return;
-    }
-    
-    loadFeed(page + 1);
-  }, [loading, hasMore, page, loadFeed]);
-  
-  // Add scroll event listener for infinite scroll
+  // Handle scroll to load more
   useEffect(() => {
-    window.addEventListener('scroll', handleScroll);
+    if (!isMounted.current || isLoading || !hasMore) return;
+    
+const throttle = (func, limit) => {
+      let lastFunc;
+      let lastRan;
+      return function(...args) {
+        if (!lastRan) {
+          func.apply(this, args);
+          lastRan = Date.now();
+        } else {
+          clearTimeout(lastFunc);
+          lastFunc = setTimeout(() => {
+            if ((Date.now() - lastRan) >= limit) {
+              func.apply(this, args);
+              lastRan = Date.now();
+            }
+          }, limit - (Date.now() - lastRan));
+        }
+      };
+    };
+
+    const handleScroll = throttle(() => {
+      const { scrollTop, scrollHeight, clientHeight } = document.documentElement;
+      // Load more when user is 500px from the bottom
+      if (scrollTop + clientHeight >= scrollHeight - 500 && hasMore && !isLoading) {
+        loadFeed(page + 1);
+      }
+    }, 200);
+    
+    window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
-  }, [handleScroll]);
+  }, [isLoading, hasMore, page]);
   
   // Render loading state
   if ((loading && !feed?.length) || isProcessing) {
@@ -548,10 +575,6 @@ const HomePage = () => {
             <FeedItem 
               key={`${item.userId?._id || 'unknown'}-${item._id}`}
               item={item} 
-              onAction={(action, itemId) => {
-                // Handle actions like like, save, etc.
-                console.log(action, itemId);
-              }}
               showUserInfo={true}
             />
           ))}

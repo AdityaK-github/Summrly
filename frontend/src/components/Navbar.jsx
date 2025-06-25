@@ -144,7 +144,7 @@ const Navbar = () => {
                     {user?.profilePictureUrl ? (
                       <img 
                         src={user.profilePictureUrl} 
-                        alt={user.username || 'Profile'} 
+                        alt={user?.username || 'Profile'} 
                         className="avatar-image"
                       />
                     ) : (
@@ -154,7 +154,7 @@ const Navbar = () => {
                     )}
                   </div>
                   <span className="username">
-                    {user.username || (user.name ? user.name.split(' ')[0] : 'Profile')}
+                    {user?.username || (user?.name ? user.name.split(' ')[0] : 'Profile')}
                   </span>
                   <FaChevronDown className={`dropdown-arrow ${isMenuOpen ? 'open' : ''}`} />
                 </button>

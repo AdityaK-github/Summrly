@@ -1,54 +1,52 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import axios from 'axios';
-
-const API_URL = 'http://localhost:5003/api';
+import api from '../../utils/api';
 
 // Async thunks
 export const fetchUserProfile = createAsyncThunk(
   'user/fetchProfile',
-  async (userId, { getState }) => {
-    const { token } = getState().auth;
-    const response = await axios.get(`${API_URL}/users/id/${userId}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    return response.data;
+  async (userId, { rejectWithValue }) => {
+    try {
+      const response = await api.get(`/users/id/${userId}`);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch user profile');
+    }
   }
 );
 
 export const followUser = createAsyncThunk(
   'user/follow',
-  async (userId, { getState }) => {
-    const { token } = getState().auth;
-    await axios.post(
-      `${API_URL}/users/${userId}/follow`,
-      {},
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      }
-    );
-    return userId;
+  async (userId, { rejectWithValue }) => {
+    try {
+      await api.post(`/users/${userId}/follow`);
+      return userId;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to follow user');
+    }
   }
 );
 
 export const unfollowUser = createAsyncThunk(
   'user/unfollow',
-  async (userId, { getState }) => {
-    const { token } = getState().auth;
-    await axios.delete(`${API_URL}/users/${userId}/follow`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    return userId;
+  async (userId, { rejectWithValue }) => {
+    try {
+      await api.delete(`/users/${userId}/follow`);
+      return userId;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to unfollow user');
+    }
   }
 );
 
 export const fetchAllUsers = createAsyncThunk(
   'user/fetchAll',
-  async ({ page = 1, limit = 20 }, { getState }) => {
-    const { token } = getState().auth;
-    const response = await axios.get(`${API_URL}/users?page=${page}&limit=${limit}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    return response.data;
+  async ({ page = 1, limit = 20 }, { rejectWithValue }) => {
+    try {
+      const response = await api.get(`/users?page=${page}&limit=${limit}`);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch users');
+    }
   }
 );
 
@@ -108,14 +106,14 @@ const userSlice = createSlice({
         state.error = action.error.message;
       })
       // Follow User
-      .addCase(followUser.fulfilled, (state, action) => {
+      .addCase(followUser.fulfilled, (state) => {
         if (state.profile) {
           state.profile.followersCount += 1;
           state.profile.isFollowing = true;
         }
       })
       // Unfollow User
-      .addCase(unfollowUser.fulfilled, (state, action) => {
+      .addCase(unfollowUser.fulfilled, (state) => {
         if (state.profile) {
           state.profile.followersCount = Math.max(0, state.profile.followersCount - 1);
           state.profile.isFollowing = false;

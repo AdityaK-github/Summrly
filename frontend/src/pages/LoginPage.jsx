@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { FaGoogle, FaSpinner, FaExclamationCircle } from 'react-icons/fa';
 import { useDispatch, useSelector } from 'react-redux';
-import { login, loadUser, clearError } from '../store/slices/authSlice';
+import { login, clearError } from '../store/slices/authSlice';
 import './LoginPage.css';
 
 const LoginPage = () => {
@@ -12,25 +12,15 @@ const LoginPage = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   
-  const { isAuthenticated, isLoading, error } = useSelector((state) => ({
-    isAuthenticated: state.auth.isAuthenticated,
-    isLoading: state.auth.isLoading,
-    error: state.auth.error
-  }));
+  const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
+  const isLoading = useSelector((state) => state.auth.isLoading);
+  const error = useSelector((state) => state.auth.error);
 
   // Handle OAuth errors from URL parameters
   useEffect(() => {
     const errorCode = searchParams.get('error');
     
     if (errorCode) {
-      const errorMessages = {
-        'access_denied': 'Login was cancelled. Please try again.',
-        'auth_failed': 'Authentication failed. Please try again.',
-        'invalid_state': 'Invalid authentication state. Please try logging in again.',
-        'no_token': 'No authentication token received. Please try again.',
-        'login_failed': 'Failed to complete login. Please try again.'
-      };
-      
       // Clear URL parameters after reading them
       const cleanUrl = window.location.pathname;
       window.history.replaceState({}, document.title, cleanUrl);
@@ -88,7 +78,8 @@ const LoginPage = () => {
       localStorage.setItem('pre_auth_path', redirectPath);
       
       // Build the OAuth URL
-      const oauthUrl = new URL('http://localhost:5003/api/users/auth/google');
+      const apiUrl = import.meta.env.MODE === 'development' ? 'http://localhost:5003' : (import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5003');
+      const oauthUrl = new URL(`${apiUrl}/api/users/auth/google`);
       oauthUrl.searchParams.append('state', state);
       
       // Redirect to the OAuth provider

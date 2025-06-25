@@ -5,16 +5,43 @@ import { loadUser } from './store/slices/authSlice';
 import Navbar from './components/Navbar';
 import LoadingSpinner from './components/common/LoadingSpinner';
 
-// Lazy load page components
-const HomePage = lazy(() => import('./pages/HomePage'));
-const MyListPage = lazy(() => import('./pages/MyListPage'));
-const AddNewPage = lazy(() => import('./pages/AddNewPage'));
-const LoginPage = lazy(() => import('./pages/LoginPage'));
-const AuthSuccessPage = lazy(() => import('./pages/AuthSuccessPage'));
-const DiscoverPage = lazy(() => import('./pages/DiscoverPage'));
-const ProfilePage = lazy(() => import('./pages/ProfilePage'));
-const UsersPage = lazy(() => import('./pages/UsersPage'));
-const ContentDetailPage = lazy(() => import('./pages/ContentDetailPage'));
+// Lazy load page components with error handling
+const HomePage = lazy(() => import('./pages/HomePage').catch(err => {
+  console.error('Failed to load HomePage:', err);
+  return { default: () => <div>Error loading page. Please refresh.</div> };
+}));
+const MyListPage = lazy(() => import('./pages/MyListPage').catch(err => {
+  console.error('Failed to load MyListPage:', err);
+  return { default: () => <div>Error loading page. Please refresh.</div> };
+}));
+const AddNewPage = lazy(() => import('./pages/AddNewPage').catch(err => {
+  console.error('Failed to load AddNewPage:', err);
+  return { default: () => <div>Error loading page. Please refresh.</div> };
+}));
+const LoginPage = lazy(() => import('./pages/LoginPage').catch(err => {
+  console.error('Failed to load LoginPage:', err);
+  return { default: () => <div>Error loading page. Please refresh.</div> };
+}));
+const AuthSuccessPage = lazy(() => import('./pages/AuthSuccessPage').catch(err => {
+  console.error('Failed to load AuthSuccessPage:', err);
+  return { default: () => <div>Error loading page. Please refresh.</div> };
+}));
+const DiscoverPage = lazy(() => import('./pages/DiscoverPage').catch(err => {
+  console.error('Failed to load DiscoverPage:', err);
+  return { default: () => <div>Error loading page. Please refresh.</div> };
+}));
+const ProfilePage = lazy(() => import('./pages/ProfilePage').catch(err => {
+  console.error('Failed to load ProfilePage:', err);
+  return { default: () => <div>Error loading page. Please refresh.</div> };
+}));
+const UsersPage = lazy(() => import('./pages/UsersPage').catch(err => {
+  console.error('Failed to load UsersPage:', err);
+  return { default: () => <div>Error loading page. Please refresh.</div> };
+}));
+const ContentDetailPage = lazy(() => import('./pages/ContentDetailPage').catch(err => {
+  console.error('Failed to load ContentDetailPage:', err);
+  return { default: () => <div>Error loading page. Please refresh.</div> };
+}));
 
 // Loading component for Suspense fallback
 const PageLoader = () => (
@@ -49,7 +76,7 @@ function App() {
   const [initialLoadAttempted, setInitialLoadAttempted] = useState(false);
   
   // Use separate selectors for each piece of state to prevent unnecessary re-renders
-  const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
+  // const isAuthenticated = useSelector(state => state.auth.isAuthenticated);
   const isLoading = useSelector((state) => state.auth.isLoading);
   const token = useSelector((state) => state.auth.token);
 
